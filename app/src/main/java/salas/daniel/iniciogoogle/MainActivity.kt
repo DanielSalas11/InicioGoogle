@@ -3,20 +3,24 @@ package salas.daniel.iniciogoogle
 import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
-import android.view.View
-import android.widget.ImageView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
+import com.google.android.gms.tasks.OnCompleteListener
 import com.google.android.gms.tasks.Task
-import salas.daniel.iniciogoogle
+import salas.daniel.iniciogoogle.databinding.ActivityMainBinding
+
 
 class MainActivity : AppCompatActivity() {
     lateinit var gso: GoogleSignInOptions
     lateinit var gsc: GoogleSignInClient
     val RC_SIGN_IN = 123
+    val COD_LOGOUT = 323
+    private lateinit var binding: ActivityMainBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -36,7 +40,7 @@ class MainActivity : AppCompatActivity() {
         gsc = GoogleSignIn.getClient(this, gso);
 
 
-        googleBtn.setOnClickListener{
+        binding.signInButton.setOnClickListener{
             val signInIntent = gsc.signInIntent
             startActivityForResult(signInIntent, RC_SIGN_IN)
         }
@@ -45,6 +49,54 @@ class MainActivity : AppCompatActivity() {
     private fun signIn() {
         val signInIntent: Intent = gsc.getSignInIntent()
         startActivityForResult(signInIntent, 1000)
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if(requestCode == RC_SIGN_IN){
+            val task = GoogleSignIn.getSignedInAccountFromIntent(data)
+            handleSignInResult(task)
+        }
+
+        if(requestCode == COD_LOGOUT){
+            signOut()
+        }
+    }
+
+    override fun onStart(){
+        super.onStart()
+
+        val account = GoogleSignIn.getLastSignedInAccount(this)
+        updateUI(account)
+    }
+    private fun signOut() {
+        gsc.signOut()
+            .addOnCompleteListener(this, OnCompleteListener<Void?> {
+                Toast.makeText(this, "Sesión terminada", Toast.LENGTH_SHORT).show()
+            })
+    }
+
+    private fun handleSignInResult(completedTask: Task<GoogleSignInAccount>) {
+        try {
+            val account = completedTask.getResult(ApiException::class.java)
+
+            // Signed in successfully, show authenticated UI.
+            updateUI(account)
+        } catch (e: ApiException) {
+            // The ApiException status code indicates the detailed failure reason.
+            // Please refer to the GoogleSignInStatusCodes class reference for more information.
+            //Log.w(TAG, "signInResult:failed code=" + e.statusCode)
+            updateUI(null)
+        }
+    }
+
+    private fun updateUI(account: GoogleSignInAccount?){
+        if (account != null){
+            val intent = Intent(this, PrincipalActivity::class.java)
+            intent.putExtra("name", account.displayName)
+            intent.putExtra("email", account.email)
+            startActivityForResult(intent, COD_LOGOUT)
+        }
     }
 
 }
